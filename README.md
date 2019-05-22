@@ -1,5 +1,5 @@
-# Python Particle Competition and Cooperation
-**Python code for the semi-supervised learning method particle competition and cooperation**
+# Particle Competition and Cooperation
+Python code for the semi-supervised learning method particle competition and cooperation
 
 If you use this algorithm, please cite the original publication:
 
