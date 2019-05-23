@@ -273,8 +273,6 @@ def labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, it):
         if(nodes['class'].values[n_i] == '-1'):
             nodes['class'].values[n_i] = label_list[np.argmax(nodes['dom_'+label_list].values[n_i])]
 
-#!python pcc.py "C:/Users/Caio Carneloz/Dropbox/BCC/Mestrado/Projeto/implementação/pcc/iris.csv" "," "label" 1 2 32 0.6 0.35 0.1 100
-#python pcc.py "dataset_path" "," "target" 1 2 32 0.6 0.35 0.1 100
 def main():
     #set params
     filePath    = sys.argv[1]
