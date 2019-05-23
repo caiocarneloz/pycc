@@ -273,25 +273,29 @@ def labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, it):
         if(nodes['class'].values[n_i] == '-1'):
             nodes['class'].values[n_i] = label_list[np.argmax(nodes['dom_'+label_list].values[n_i])]
 
+#!python pcc.py "C:/Users/Caio Carneloz/Dropbox/BCC/Mestrado/Projeto/implementação/pcc/iris.csv" "," "label" 1 2 32 0.6 0.35 0.1 100
+#python pcc.py "dataset_path" "," "target" 1 2 32 0.6 0.35 0.1 100
 def main():
     #set params
-    filePath = os.path.abspath(sys.argv[0]).replace('pcc.py','')
-    policy      = 1
-    sigma       = 2
-    k_neighbors = 32
-    pgrd        = 0.6
-    delta_v     = 0.35
-    l_data      = 0.1
-    iterations  = 1500
+    filePath    = sys.argv[1]
+    separator   = sys.argv[2]
+    target      = sys.argv[3]
+    policy      = int(sys.argv[4])
+    sigma       = float(sys.argv[5])
+    k_neighbors = int(sys.argv[6])
+    pgrd        = float(sys.argv[7])
+    delta_v     = float(sys.argv[8])
+    l_data      = float(sys.argv[9])
+    iterations  = int(sys.argv[10])
 
     #read the input file
     print('reading dataset')
-    df = pd.read_csv(filePath+'iris.csv', sep=',', engine='python')
+    df = pd.read_csv(filePath, sep=separator, engine='python')
 
     #separate data from labels
     print('separating data from labels')
-    data = df.loc[:,'0':str(len(df.columns)-2)]
-    true_labels = df.loc[:,'label']
+    data = df.iloc[:,df.columns != target]
+    true_labels = df.loc[:,target]
     
     #mask the labeled samples
     labels = maskData(true_labels,l_data)
