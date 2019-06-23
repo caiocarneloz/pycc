@@ -191,7 +191,7 @@ def randomWalk(neighbours):
 
     return neighbours[np.random.choice(len(neighbours))]
 
-def greedyWalk(nodes, particle, p_i, neighbours):
+def greedyWalk(nodes, particle, p_i, neighbours, class_map):
 
     """
     function:
@@ -204,13 +204,15 @@ def greedyWalk(nodes, particle, p_i, neighbours):
 
     prob_sum = 0
     slices = []
-    label = particle['class']
+    label = particle[p_i][3]
 
     for n in neighbours:
-        prob_sum += nodes.loc[n,'dom_'+str(label)]*(1/pow(1+nodes.loc[n,'dist_'+str(p_i)],2))
+        prob_sum += nodes[1][n][class_map['dom_'+str(label)]]*(1/pow(1+nodes[0][n][p_i],2))
 
     for n in neighbours:
-        slices.append((nodes.loc[n,'dom_'+str(label)]*(1/pow(1+nodes.loc[n,'dist_'+str(p_i)],2)))/prob_sum)
+        slices.append((nodes[1][n][class_map['dom_'+str(label)]]*(1/pow(1+nodes[0][n][p_i],2)))/prob_sum)
+
+
 
     choice = 0
     roullete_sum = 0
@@ -224,7 +226,7 @@ def greedyWalk(nodes, particle, p_i, neighbours):
 
     return neighbours[choice]
 
-def update(node, particle, n_i, p_i, labels, c, delta_v):
+def update(node, particle, n_i, p_i, labels, c, delta_v, class_map):
 
     """
     function:
@@ -234,42 +236,38 @@ def update(node, particle, n_i, p_i, labels, c, delta_v):
 
 
     """
-
+    
     current_domain = []
     new_domain = []
 
     if(labels[n_i] == '-1'):
-        sub = (delta_v*particle.loc[p_i,'strength'])/(len(labels)-1)
+        sub = (delta_v*particle[p_i][2])/(len(labels)-1)
 
         for l in labels.unique():
-            if(particle.loc[p_i,'class'] != l and l != '-1'):
-                current_domain.append(node.loc[n_i,'dom_'+str(l)])
-                node.loc[n_i,'dom_'+str(l)] = max([0,node.loc[n_i,'dom_'+str(l)]-sub])
-                new_domain.append(node.loc[n_i,'dom_'+str(l)])
+            if(particle[p_i][3] != l and l != '-1'):
+                current_domain.append(node[1][n_i][class_map['dom_'+str(l)]])
+                node[1][n_i][class_map['dom_'+str(l)]] = max([0,node[1][n_i][class_map['dom_'+str(l)]]-sub])
+                new_domain.append(node[1][n_i][class_map['dom_'+str(l)]])
 
 
         difference = []
         for i in range(0,len(current_domain)):
             difference.append(current_domain[i]-new_domain[i])
 
-
-        node.loc[n_i,'dom_'+particle.loc[p_i,'class']] += sum(difference)
+        node[1][n_i][class_map['dom_'+particle[p_i][3]]] += sum(difference)
     else:
         new_domain.append(0)
 
+    particle[p_i][2] = node[1][n_i][class_map['dom_'+particle[p_i][3]]]
 
+    current_node = particle[p_i][0]
+    if(node[0][n_i][p_i] > (node[0][current_node][p_i]+1)):
+        node[0][n_i][p_i] = node[0][current_node][p_i]+1
 
-    particle.loc[p_i,'strength'] = node.loc[n_i,'dom_'+particle.loc[p_i,'class']]
+    if(node[1][n_i][class_map['dom_'+particle[p_i][3]]] > max(new_domain)):#NEW OR CURRENT?
+        particle[p_i][0] = n_i
 
-    current_node = particle.loc[p_i,'current']
-    if(node.loc[n_i,'dist_'+str(p_i)] > (node.loc[current_node,'dist_'+str(p_i)]+1)):
-        node.loc[n_i,'dist_'+str(p_i)] = node.loc[current_node,'dist_'+str(p_i)]+1
-
-    if(node.loc[n_i,'dom_'+particle.loc[p_i,'class']] > max(new_domain)):#NEW OR CURRENT?
-        particle.loc[p_i,'current'] = n_i
-
-def labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, iterations):
-
+def labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, iterations, class_map):
     """
     function:
 
@@ -279,38 +277,54 @@ def labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, iteratio
 
     """
 
-    toolbar_width = 50
-    sys.stdout.write("[%s]" % (" " * toolbar_width))
-    sys.stdout.flush()
-    sys.stdout.write("\b" * (toolbar_width+1))
-    block_size = iterations/toolbar_width
-    proc = 0
+#    toolbar_width = 50
+#    sys.stdout.write("[%s]" % (" " * toolbar_width))
+#    sys.stdout.flush()
+#    sys.stdout.write("\b" * (toolbar_width+1))
+#    block_size = iterations/toolbar_width
+#    proc = 0
 
     for it in range(0,iterations):
 
-        proc += 1
+        #proc += 1
 
         for p_i in range(0,len(particles)):
             if(np.random.random() < pgrd):
-                next_node = greedyWalk(nodes, particles.loc[p_i,:], p_i, graph[particles.loc[p_i,'current']])
+                next_node = greedyWalk(nodes, particles, p_i, graph[particles[p_i][0]], class_map)
             else:
-                next_node = randomWalk(graph[particles.loc[p_i,'current']])
+                next_node = randomWalk(graph[particles[p_i][0]]) 
 
-            update(nodes, particles, next_node, p_i, labels, c, delta_v)
+            update(nodes, particles, next_node, p_i, labels, c, delta_v, class_map)
 
-        if(proc >= block_size):
-            proc = 0
-            sys.stdout.write("-")
-            sys.stdout.flush()
+#        if(proc >= block_size):
+#            proc = 0
+#            sys.stdout.write("-")
+#            sys.stdout.flush()
 
-    sys.stdout.write("]\n")
+    #sys.stdout.write("]\n")
 
     label_list = np.unique(labels[labels != '-1'])
 
-    for n_i in range(0,len(nodes)):
-        if(nodes['class'].values[n_i] == '-1'):
-            nodes['class'].values[n_i] = label_list[np.argmax(nodes['dom_'+label_list].values[n_i])]
+    for n_i in range(0,len(nodes[1])):
+        if(nodes[1][n_i][0] == '-1'):
+            nodes[1][n_i][0] = label_list[np.argmax(nodes[1][n_i][1:])]
 
+def transform(nodes, particles):
+    
+    np_nodes = []
+    np_nodes.append(nodes.loc[:,'dist_0':].values)
+    np_nodes.append(nodes.iloc[:,:nodes.columns.get_loc('dist_0')].values)
+    
+    i = 1
+    class_map = {}
+    for c in nodes.iloc[:,1:nodes.columns.get_loc('dist_0')].columns:
+        class_map[c] = i
+        i+=1
+        
+    np_particles = particles.values
+    
+    return np_nodes, np_particles, class_map
+        
 def PCC(data, true_labels, policy, sigma, k, pgrd, delta_v, l_data, epochs):
 
     #mask the labeled samples
@@ -320,19 +334,22 @@ def PCC(data, true_labels, policy, sigma, k, pgrd, delta_v, l_data, epochs):
     c = len(np.unique(true_labels))
 
     #creates the node structure and particles
-    print('generating particles and nodes')
+    #print('generating particles and nodes')
     particles = genParticles(data, labels)
     nodes = genNodes(data, labels, particles, c)
 
     #creates the graph adjacency list
-    print('generating adjacency list')
+    #print('generating adjacency list')
     graph = genGraph(data, k, sigma, policy)
 
+    #fastest
+    nodes, particles, class_map = transform(nodes, particles)
+
     #run the label propagation
-    print('running label propagation...')
+    #print('running label propagation...')
     start = time.time()
-    labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, epochs)
+    labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, epochs, class_map)
     end = time.time()
     print('finished with time: '+"{0:.0f}".format(end-start)+'s')
 
-    return labels, true_labels, nodes['class']
+    return labels, true_labels, list(zip(*nodes[1]))[0]
