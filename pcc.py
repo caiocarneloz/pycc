@@ -4,9 +4,10 @@ import time
 import random
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 
-def getAccuracy(nodes, true_labels, labels):
-    
+def accuracyScore(masked_labels, true_labels, predicted_labels):
+
     """
     function: prints all classes separately accuracy and mean accuracy
 
@@ -15,9 +16,32 @@ def getAccuracy(nodes, true_labels, labels):
     <nodes> (DataFrame): dataframe containing all node information
     <true_labels> (list): list containing dataset true labels
     <labels> (list): list containing the output labels generated
-    
+
     """
-    
+
+    df_x = pd.DataFrame()
+    df_x['labeled'] = masked_labels
+    df_x['true'] = true_labels
+    df_x['predicted'] = predicted_labels
+
+    true = len(df_x[df_x['labeled'] == '-1'])
+    pred = len(df_x[(df_x['labeled'] == '-1') & (df_x['true'] == df_x['predicted'])])
+
+    return float(pred/true)
+
+def accuracyReport(nodes, true_labels, labels):
+
+    """
+    function: prints all classes separately accuracy and mean accuracy
+
+    args:
+    ----
+    <nodes> (DataFrame): dataframe containing all node information
+    <true_labels> (list): list containing dataset true labels
+    <labels> (list): list containing the output labels generated
+
+    """
+
     df_x = pd.DataFrame()
     df_x['true'] = true_labels
     df_x['predicted'] = nodes['class']
@@ -36,15 +60,15 @@ def getAccuracy(nodes, true_labels, labels):
     print('\n\nAccuracy: \n'+str(sum_pred) + '/' +str(sum_true) + ' - ' + "{0:.2f}".format(sum_pred/sum_true))
 
 def maskData(true_labels, percentage):
-    
+
     """
-    function: turns a percentage of labeled data into unlabeled data 
+    function: turns a percentage of labeled data into unlabeled data
 
     args:
     ----
     <true_labels> (list): list containing dataset true labels
-    <percentage> (float): value with labeled data percentage 
-    
+    <percentage> (float): value with labeled data percentage
+
     """
 
     mask = np.ones((1,len(true_labels)),dtype=bool)[0]
@@ -65,14 +89,14 @@ def maskData(true_labels, percentage):
     return labels
 
 def genNodes(data, labels, particles, c):
-    
+
     """
     function:
 
     args:
     ----
 
-    
+
     """
 
     nodes = pd.DataFrame(pd.np.empty((len(data), 0)) * pd.np.nan)
@@ -93,14 +117,14 @@ def genNodes(data, labels, particles, c):
     return nodes
 
 def genParticles(data, labels):
-    
+
     """
     function:
 
     args:
     ----
 
-    
+
     """
 
     n_particles = len(labels[labels != '-1'])
@@ -122,18 +146,18 @@ def genParticles(data, labels):
     return particles
 
 def genGraph(data, k_neighbors, sigma, policy):
-    
+
     """
     function:
 
     args:
     ----
 
-    
+
     """
 
     graph = {}
-    
+
     for i in range(0,len(data)):
 
         dist = [float("inf")] * len(data)
@@ -155,34 +179,32 @@ def genGraph(data, k_neighbors, sigma, policy):
     return graph
 
 def randomWalk(neighbours):
-    
+
     """
     function:
 
     args:
     ----
 
-    
+
     """
-    
+
     return neighbours[np.random.choice(len(neighbours))]
 
 def greedyWalk(nodes, particle, p_i, neighbours):
-    
+
     """
     function:
 
     args:
     ----
 
-    
+
     """
 
     prob_sum = 0
     slices = []
     label = particle['class']
-
-
 
     for n in neighbours:
         prob_sum += nodes.loc[n,'dom_'+str(label)]*(1/pow(1+nodes.loc[n,'dist_'+str(p_i)],2))
@@ -203,40 +225,40 @@ def greedyWalk(nodes, particle, p_i, neighbours):
     return neighbours[choice]
 
 def update(node, particle, n_i, p_i, labels, c, delta_v):
-    
+
     """
     function:
 
     args:
     ----
 
-    
+
     """
 
     current_domain = []
     new_domain = []
-    
+
     if(labels[n_i] == '-1'):
         sub = (delta_v*particle.loc[p_i,'strength'])/(len(labels)-1)
-    
+
         for l in labels.unique():
             if(particle.loc[p_i,'class'] != l and l != '-1'):
                 current_domain.append(node.loc[n_i,'dom_'+str(l)])
                 node.loc[n_i,'dom_'+str(l)] = max([0,node.loc[n_i,'dom_'+str(l)]-sub])
                 new_domain.append(node.loc[n_i,'dom_'+str(l)])
-    
-    
+
+
         difference = []
         for i in range(0,len(current_domain)):
             difference.append(current_domain[i]-new_domain[i])
-    
-    
+
+
         node.loc[n_i,'dom_'+particle.loc[p_i,'class']] += sum(difference)
     else:
         new_domain.append(0)
-        
-    
-    
+
+
+
     particle.loc[p_i,'strength'] = node.loc[n_i,'dom_'+particle.loc[p_i,'class']]
 
     current_node = particle.loc[p_i,'current']
@@ -245,19 +267,29 @@ def update(node, particle, n_i, p_i, labels, c, delta_v):
 
     if(node.loc[n_i,'dom_'+particle.loc[p_i,'class']] > max(new_domain)):#NEW OR CURRENT?
         particle.loc[p_i,'current'] = n_i
-    
-def labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, it):
-    
+
+def labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, iterations):
+
     """
     function:
 
     args:
     ----
 
-    
+
     """
 
-    while(it > 0):
+    toolbar_width = 50
+    sys.stdout.write("[%s]" % (" " * toolbar_width))
+    sys.stdout.flush()
+    sys.stdout.write("\b" * (toolbar_width+1))
+    block_size = iterations/toolbar_width
+    proc = 0
+
+    for it in range(0,iterations):
+
+        proc += 1
+
         for p_i in range(0,len(particles)):
             if(np.random.random() < pgrd):
                 next_node = greedyWalk(nodes, particles.loc[p_i,:], p_i, graph[particles.loc[p_i,'current']])
@@ -265,7 +297,13 @@ def labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, it):
                 next_node = randomWalk(graph[particles.loc[p_i,'current']])
 
             update(nodes, particles, next_node, p_i, labels, c, delta_v)
-        it-=1
+
+        if(proc >= block_size):
+            proc = 0
+            sys.stdout.write("-")
+            sys.stdout.flush()
+
+    sys.stdout.write("]\n")
 
     label_list = np.unique(labels[labels != '-1'])
 
@@ -273,28 +311,8 @@ def labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, it):
         if(nodes['class'].values[n_i] == '-1'):
             nodes['class'].values[n_i] = label_list[np.argmax(nodes['dom_'+label_list].values[n_i])]
 
-def main():
-    #set params
-    filePath    = sys.argv[1]
-    separator   = sys.argv[2]
-    target      = sys.argv[3]
-    policy      = int(sys.argv[4])
-    sigma       = float(sys.argv[5])
-    k_neighbors = int(sys.argv[6])
-    pgrd        = float(sys.argv[7])
-    delta_v     = float(sys.argv[8])
-    l_data      = float(sys.argv[9])
-    iterations  = int(sys.argv[10])
+def PCC(data, true_labels, policy, sigma, k, pgrd, delta_v, l_data, epochs):
 
-    #read the input file
-    print('reading dataset')
-    df = pd.read_csv(filePath, sep=separator, engine='python')
-
-    #separate data from labels
-    print('separating data from labels')
-    data = df.iloc[:,df.columns != target]
-    true_labels = df.loc[:,target]
-    
     #mask the labeled samples
     labels = maskData(true_labels,l_data)
 
@@ -308,17 +326,13 @@ def main():
 
     #creates the graph adjacency list
     print('generating adjacency list')
-    graph = genGraph(data, k_neighbors, sigma, policy)
+    graph = genGraph(data, k, sigma, policy)
 
     #run the label propagation
-    print('running label propagation')
+    print('running label propagation...')
     start = time.time()
-    labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, iterations)
+    labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, epochs)
     end = time.time()
     print('finished with time: '+"{0:.0f}".format(end-start)+'s')
 
-    #show the accuracy obtained
-    getAccuracy(nodes, true_labels, labels)
-
-if __name__ == "__main__":
-    main()
+    return labels, true_labels, nodes['class']
