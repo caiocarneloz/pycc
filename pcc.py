@@ -1,10 +1,7 @@
-import os
-import sys
 import time
 import random
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 
 def accuracyScore(masked_labels, true_labels, predicted_labels):
 
@@ -60,17 +57,7 @@ def accuracyReport(nodes, true_labels, labels):
     print('\n\nAccuracy: \n'+str(sum_pred) + '/' +str(sum_true) + ' - ' + "{0:.2f}".format(sum_pred/sum_true))
 
 def maskData(true_labels, percentage):
-
-    """
-    function: turns a percentage of labeled data into unlabeled data
-
-    args:
-    ----
-    <true_labels> (list): list containing dataset true labels
-    <percentage> (float): value with labeled data percentage
-
-    """
-
+    
     mask = np.ones((1,len(true_labels)),dtype=bool)[0]
 
 
@@ -88,74 +75,46 @@ def maskData(true_labels, percentage):
 
     return labels
 
-def genNodes(data, labels, particles, c):
-
-    """
-    function:
-
-    args:
-    ----
-
-
-    """
-
-    nodes = pd.DataFrame(pd.np.empty((len(data), 0)) * pd.np.nan)
-    nodes['class'] = labels
-
-    for l in np.unique(labels):
-        if(l != '-1'):
-            nodes['dom_'+str(l)] = 0.0
-            nodes.loc[str(l) == nodes['class'], 'dom_'+str(l)] = 1
-
-    nodes.loc[nodes['class'] == '-1',nodes.columns != 'class'] = 1/c
-
-    for i, p in particles.iterrows():
-        nodes['dist_'+str(i)] = 0
-        nodes.loc[p['home'],'dist_'+str(i)] = 0
-        nodes.loc[nodes.index != p['home'],'dist_'+str(i)] = len(nodes)-1
-
-    return nodes
+def genClassMap(true_labels):
+    
+    i = 1
+    class_map = {}
+    for c in np.unique(true_labels):
+        class_map[c] = i
+        i+=1
+        
+    return class_map
 
 def genParticles(data, labels):
+    
+    particles = []
 
-    """
-    function:
-
-    args:
-    ----
-
-
-    """
-
-    n_particles = len(labels[labels != '-1'])
-    particles = pd.DataFrame(pd.np.empty((n_particles, 0)) * pd.np.nan)
-
-    particles['current'] = 0
-    particles['home'] = 0
-    particles['strength'] = 0.0
-    particles['class'] = ''
-
-    p_i = 0
     for i in range(0,len(labels)):
         if(labels[i] != '-1'):
-            particles['current'].values[p_i] = particles['home'].values[p_i] = i
-            particles['strength'].values[p_i] = 1
-            particles['class'].values[p_i] = labels[i]
-            p_i += 1
+            particles.append([int(i),int(i),1,labels[i]])
 
-    return particles
+    return np.array(particles, dtype='object')
+
+def genNodes(data, labels, particles, c, class_map):
+    
+    nodes = np.array([[0] * len(np.unique(labels)) for i in range(len(data))], dtype='object')
+    nodes[:,0] = labels.values
+
+    for l in np.unique(labels):
+        if(l != '-1'):            
+            nodes[nodes[:,0] == str(l), class_map[str(l)]] = 1
+    
+    nodes[nodes[:,0] == '-1',1:] = 1/c
+
+    dist_table = np.array([[len(data)-1] * len(particles) for i in range(len(data))])
+
+    for i in range(0,len(particles)):
+        dist_table[particles[i,1],i] = 0
+
+    return nodes, dist_table
 
 def genGraph(data, k_neighbors, sigma, policy):
-
-    """
-    function:
-
-    args:
-    ----
-
-
-    """
-
+    
     graph = {}
 
     for i in range(0,len(data)):
@@ -179,40 +138,20 @@ def genGraph(data, k_neighbors, sigma, policy):
     return graph
 
 def randomWalk(neighbours):
-
-    """
-    function:
-
-    args:
-    ----
-
-
-    """
-
+    
     return neighbours[np.random.choice(len(neighbours))]
 
-def greedyWalk(nodes, particle, p_i, neighbours, class_map):
-
-    """
-    function:
-
-    args:
-    ----
-
-
-    """
-
+def greedyWalk(storage, p_i, neighbours):
+    
     prob_sum = 0
     slices = []
-    label = particle[p_i][3]
+    label = storage['particles'][p_i,3]
 
     for n in neighbours:
-        prob_sum += nodes[1][n][class_map['dom_'+str(label)]]*(1/pow(1+nodes[0][n][p_i],2))
+        prob_sum += storage['nodes'][n,storage['class_map'][str(label)]]*(1/pow(1+storage['dist_table'][n,p_i],2))
 
     for n in neighbours:
-        slices.append((nodes[1][n][class_map['dom_'+str(label)]]*(1/pow(1+nodes[0][n][p_i],2)))/prob_sum)
-
-
+        slices.append((storage['nodes'][n,storage['class_map'][str(label)]]*(1/pow(1+storage['dist_table'][n,p_i],2)))/prob_sum)
 
     choice = 0
     roullete_sum = 0
@@ -226,107 +165,63 @@ def greedyWalk(nodes, particle, p_i, neighbours, class_map):
 
     return neighbours[choice]
 
-def update(node, particle, n_i, p_i, labels, c, delta_v, class_map):
+def update(storage, n_i, p_i, labels, c, delta_v):
 
-    """
-    function:
-
-    args:
-    ----
-
-
-    """
-    
     current_domain = []
     new_domain = []
 
     if(labels[n_i] == '-1'):
-        sub = (delta_v*particle[p_i][2])/(len(labels)-1)
+        sub = (delta_v*storage['particles'][p_i,2])/(len(labels)-1)
 
         for l in labels.unique():
-            if(particle[p_i][3] != l and l != '-1'):
-                current_domain.append(node[1][n_i][class_map['dom_'+str(l)]])
-                node[1][n_i][class_map['dom_'+str(l)]] = max([0,node[1][n_i][class_map['dom_'+str(l)]]-sub])
-                new_domain.append(node[1][n_i][class_map['dom_'+str(l)]])
+            if(storage['particles'][p_i,3] != l and l != '-1'):
+                current_domain.append(storage['nodes'][n_i,storage['class_map'][str(l)]])
+                storage['nodes'][n_i,storage['class_map'][str(l)]] = max([0,storage['nodes'][n_i,storage['class_map'][str(l)]]-sub])
+                new_domain.append(storage['nodes'][n_i,storage['class_map'][str(l)]])
 
 
         difference = []
         for i in range(0,len(current_domain)):
             difference.append(current_domain[i]-new_domain[i])
 
-        node[1][n_i][class_map['dom_'+particle[p_i][3]]] += sum(difference)
+        storage['nodes'][n_i,storage['class_map'][storage['particles'][p_i,3]]] += sum(difference)
     else:
         new_domain.append(0)
 
-    particle[p_i][2] = node[1][n_i][class_map['dom_'+particle[p_i][3]]]
+    storage['particles'][p_i,2] = storage['nodes'][n_i,storage['class_map'][storage['particles'][p_i,3]]]
 
-    current_node = particle[p_i][0]
-    if(node[0][n_i][p_i] > (node[0][current_node][p_i]+1)):
-        node[0][n_i][p_i] = node[0][current_node][p_i]+1
+    current_node = storage['particles'][p_i,0]
+    if(storage['dist_table'][n_i,p_i] > (storage['dist_table'][current_node,p_i]+1)):
+        storage['dist_table'][n_i,p_i] = storage['dist_table'][current_node,p_i]+1
 
-    if(node[1][n_i][class_map['dom_'+particle[p_i][3]]] > max(new_domain)):#NEW OR CURRENT?
-        particle[p_i][0] = n_i
+    if(storage['nodes'][n_i,storage['class_map'][storage['particles'][p_i,3]]] > max(new_domain)):#NEW OR CURRENT?
+        storage['particles'][p_i,0] = n_i
 
-def labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, iterations, class_map):
-    """
-    function:
-
-    args:
-    ----
-
-
-    """
-
-#    toolbar_width = 50
-#    sys.stdout.write("[%s]" % (" " * toolbar_width))
-#    sys.stdout.flush()
-#    sys.stdout.write("\b" * (toolbar_width+1))
-#    block_size = iterations/toolbar_width
-#    proc = 0
+def labelPropagation(graph, storage, labels, pgrd, c, delta_v, iterations):
 
     for it in range(0,iterations):
 
-        #proc += 1
-
-        for p_i in range(0,len(particles)):
+        for p_i in range(0,len(storage['particles'])):
             if(np.random.random() < pgrd):
-                next_node = greedyWalk(nodes, particles, p_i, graph[particles[p_i][0]], class_map)
+                next_node = greedyWalk(storage, p_i, graph[storage['particles'][p_i,0]])
             else:
-                next_node = randomWalk(graph[particles[p_i][0]]) 
+                next_node = randomWalk(graph[storage['particles'][p_i,0]])
 
-            update(nodes, particles, next_node, p_i, labels, c, delta_v, class_map)
-
-#        if(proc >= block_size):
-#            proc = 0
-#            sys.stdout.write("-")
-#            sys.stdout.flush()
-
-    #sys.stdout.write("]\n")
+            update(storage, next_node, p_i, labels, c, delta_v)
 
     label_list = np.unique(labels[labels != '-1'])
 
-    for n_i in range(0,len(nodes[1])):
-        if(nodes[1][n_i][0] == '-1'):
-            nodes[1][n_i][0] = label_list[np.argmax(nodes[1][n_i][1:])]
+    for n_i in range(0,len(storage['nodes'])):
+        if(storage['nodes'][n_i,0] == '-1'):
+            storage['nodes'][n_i,0] = label_list[np.argmax(storage['nodes'][n_i,1:])]
 
-def transform(nodes, particles):
-    
-    np_nodes = []
-    np_nodes.append(nodes.loc[:,'dist_0':].values)
-    np_nodes.append(nodes.iloc[:,:nodes.columns.get_loc('dist_0')].values)
-    
-    i = 1
-    class_map = {}
-    for c in nodes.iloc[:,1:nodes.columns.get_loc('dist_0')].columns:
-        class_map[c] = i
-        i+=1
-        
-    np_particles = particles.values
-    
-    return np_nodes, np_particles, class_map
-        
+
 def PCC(data, true_labels, policy, sigma, k, pgrd, delta_v, l_data, epochs):
 
+    start = time.time()
+    
+    storage = {}
+    
     #mask the labeled samples
     labels = maskData(true_labels,l_data)
 
@@ -335,21 +230,21 @@ def PCC(data, true_labels, policy, sigma, k, pgrd, delta_v, l_data, epochs):
 
     #creates the node structure and particles
     #print('generating particles and nodes')
-    particles = genParticles(data, labels)
-    nodes = genNodes(data, labels, particles, c)
+    storage['class_map'] = genClassMap(true_labels)
+    storage['particles'] = genParticles(data, labels)
+    storage['nodes'], storage['dist_table'] = genNodes(data, labels, storage['particles'], c, storage['class_map'])
 
     #creates the graph adjacency list
     #print('generating adjacency list')
     graph = genGraph(data, k, sigma, policy)
 
-    #fastest
-    nodes, particles, class_map = transform(nodes, particles)
-
     #run the label propagation
     #print('running label propagation...')
-    start = time.time()
-    labelPropagation(graph, particles, nodes, labels, pgrd, c, delta_v, epochs, class_map)
+    
+    labelPropagation(graph, storage, labels, pgrd, c, delta_v, epochs)
+    
     end = time.time()
+    
     print('finished with time: '+"{0:.0f}".format(end-start)+'s')
 
-    return labels, true_labels, list(zip(*nodes[1]))[0]
+    return labels, true_labels, list(storage['nodes'][:,0])
