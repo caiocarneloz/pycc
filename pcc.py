@@ -4,18 +4,7 @@ import numpy as np
 import pandas as pd
 
 def accuracyScore(masked_labels, true_labels, predicted_labels):
-
-    """
-    function: prints all classes separately accuracy and mean accuracy
-
-    args:
-    ----
-    <nodes> (DataFrame): dataframe containing all node information
-    <true_labels> (list): list containing dataset true labels
-    <labels> (list): list containing the output labels generated
-
-    """
-
+    
     df_x = pd.DataFrame()
     df_x['labeled'] = masked_labels
     df_x['true'] = true_labels
@@ -26,22 +15,11 @@ def accuracyScore(masked_labels, true_labels, predicted_labels):
 
     return float(pred/true)
 
-def accuracyReport(nodes, true_labels, labels):
-
-    """
-    function: prints all classes separately accuracy and mean accuracy
-
-    args:
-    ----
-    <nodes> (DataFrame): dataframe containing all node information
-    <true_labels> (list): list containing dataset true labels
-    <labels> (list): list containing the output labels generated
-
-    """
-
+def accuracyReport(predicted_labels, true_labels, labels):
+    
     df_x = pd.DataFrame()
     df_x['true'] = true_labels
-    df_x['predicted'] = nodes['class']
+    df_x['predicted'] = predicted_labels
     df_x['labeled'] = labels
 
     sum_true = 0
@@ -105,32 +83,36 @@ def genNodes(data, labels, particles, c, class_map):
             nodes[nodes[:,0] == str(l), class_map[str(l)]] = 1
     
     nodes[nodes[:,0] == '-1',1:] = 1/c
+    
+    return nodes
 
+def genDistTable(data, particles):
+    
     dist_table = np.array([[len(data)-1] * len(particles) for i in range(len(data))])
 
     for i in range(0,len(particles)):
         dist_table[particles[i,1],i] = 0
-
-    return nodes, dist_table
+        
+    return dist_table
 
 def genGraph(data, k_neighbors, sigma, policy):
     
+    data_v = data.values
     graph = {}
+    
+    dist = np.array([[float("inf")] * len(data_v) for i in range(len(data_v))])
 
-    for i in range(0,len(data)):
+    for i in range(0,len(data_v)):
+        
+        actual = data_v[i]
 
-        dist = [float("inf")] * len(data)
+        for j in range(i+1,len(data_v)):
+                dist[j,i] = dist[i,j] = np.linalg.norm(actual-data_v[j])
 
-        actual = data.values[i]
-
-        for j in range(0,len(data)):
-            if(i != j):
-                dist[j] = np.linalg.norm(actual-data.values[j])
-
-        dist = np.array(dist)
-        dist = np.argsort(dist)
-        graph[i] = list(dist[0:k_neighbors])
-
+    for i in range(0,len(data_v)):
+        sorted_dist = np.argsort(dist[i])
+        graph[i] = list(sorted_dist[0:k_neighbors])
+    
     for i in range(0,len(data)):
         graph[i] += ([k for k,v in graph.items() if i in v])
         graph[i] = list(set(graph[i]))
@@ -215,32 +197,23 @@ def labelPropagation(graph, storage, labels, pgrd, c, delta_v, iterations):
         if(storage['nodes'][n_i,0] == '-1'):
             storage['nodes'][n_i,0] = label_list[np.argmax(storage['nodes'][n_i,1:])]
 
-
 def PCC(data, true_labels, policy, sigma, k, pgrd, delta_v, l_data, epochs):
 
     start = time.time()
     
     storage = {}
     
-    #mask the labeled samples
     labels = maskData(true_labels,l_data)
 
-    #get the number of classes
     c = len(np.unique(true_labels))
 
-    #creates the node structure and particles
-    #print('generating particles and nodes')
     storage['class_map'] = genClassMap(true_labels)
     storage['particles'] = genParticles(data, labels)
-    storage['nodes'], storage['dist_table'] = genNodes(data, labels, storage['particles'], c, storage['class_map'])
+    storage['nodes'] = genNodes(data, labels, storage['particles'], c, storage['class_map'])
+    storage['dist_table'] = genDistTable(data, storage['particles'])
 
-    #creates the graph adjacency list
-    #print('generating adjacency list')
     graph = genGraph(data, k, sigma, policy)
 
-    #run the label propagation
-    #print('running label propagation...')
-    
     labelPropagation(graph, storage, labels, pgrd, c, delta_v, epochs)
     
     end = time.time()
