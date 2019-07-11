@@ -67,11 +67,11 @@ class ParticleCompetitionAndCooperation():
         if(labels[n_i] == -1):
             sub = (self.delta_v*storage['particles'][p_i,2])/(len(labels)-1)
 
-            for l in labels.unique():
+            for l in np.unique(labels):
                 if(storage['particles'][p_i,3] != l and l != -1):
-                    current_domain.append(storage['nodes'][n_i,storage['class_map'][str(l)]])
-                    storage['nodes'][n_i,storage['class_map'][str(l)]] = max([0,storage['nodes'][n_i,storage['class_map'][str(l)]]-sub])
-                    new_domain.append(storage['nodes'][n_i,storage['class_map'][str(l)]])
+                    current_domain.append(storage['nodes'][n_i,storage['class_map'][l]])
+                    storage['nodes'][n_i,storage['class_map'][l]] = max([0,storage['nodes'][n_i,storage['class_map'][l]]-sub])
+                    new_domain.append(storage['nodes'][n_i,storage['class_map'][l]])
 
 
             difference = []
@@ -98,10 +98,10 @@ class ParticleCompetitionAndCooperation():
         label = storage['particles'][p_i,3]
 
         for n in neighbours:
-            prob_sum += storage['nodes'][n,storage['class_map'][str(label)]]*(1/pow(1+storage['dist_table'][n,p_i],2))
+            prob_sum += storage['nodes'][n,storage['class_map'][label]]*(1/pow(1+storage['dist_table'][n,p_i],2))
 
         for n in neighbours:
-            slices.append((storage['nodes'][n,storage['class_map'][str(label)]]*(1/pow(1+storage['dist_table'][n,p_i],2)))/prob_sum)
+            slices.append((storage['nodes'][n,storage['class_map'][label]]*(1/pow(1+storage['dist_table'][n,p_i],2)))/prob_sum)
 
         choice = 0
         roullete_sum = 0
@@ -120,7 +120,7 @@ class ParticleCompetitionAndCooperation():
 
         return neighbours[np.random.choice(len(neighbours))]
     
-    def __accuracyScore(self, masked_labels, true_labels, predicted_labels):
+    def accuracyScore(self, masked_labels, true_labels, predicted_labels):
     
         df_x = pd.DataFrame()
         df_x['labeled'] = masked_labels
@@ -132,7 +132,7 @@ class ParticleCompetitionAndCooperation():
     
         return float(pred/true)
     
-    def __accuracyReport(self, predicted_labels, true_labels, labels):
+    def accuracyReport(self, predicted_labels, true_labels, labels):
     
         df_x = pd.DataFrame()
         df_x['true'] = true_labels
@@ -142,10 +142,10 @@ class ParticleCompetitionAndCooperation():
         sum_true = 0
         sum_pred = 0
     
-        for l in true_labels.unique():
+        for l in np.unique(true_labels):
             true = len(df_x[(df_x['labeled'] == -1) & (df_x['true'] == l)])
             pred = len(df_x[(df_x['labeled'] == -1) & (df_x['true'] == l) & (df_x['true'] == df_x['predicted'])])
-            print('\n\n'+l+': \n'+str(pred) + '/' +str(true) + ' - ' + "{0:.2f}".format(pred/true))
+            print('\n\n'+str(l)+': \n'+str(pred) + '/' +str(true) + ' - ' + "{0:.2f}".format(pred/true))
             sum_true += true
             sum_pred += pred
     
@@ -175,11 +175,11 @@ class ParticleCompetitionAndCooperation():
     def __genNodes(self, data, labels, particles, c, class_map):
     
         nodes = np.array([[0] * len(np.unique(labels)) for i in range(len(data))], dtype='object')
-        nodes[:,0] = labels.values
+        nodes[:,0] = labels
     
         for l in np.unique(labels):
             if(l != -1):
-                nodes[nodes[:,0] == str(l), class_map[str(l)]] = 1
+                nodes[nodes[:,0] == str(l), class_map[l]] = 1
     
         nodes[nodes[:,0] == -1,1:] = 1/c
     
