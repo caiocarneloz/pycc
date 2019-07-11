@@ -10,12 +10,12 @@ from sklearn.metrics import precision_score
 
 class ParticleCompetitionAndCooperation():
 
-    def __init__(self, n_neighbours=1, pgrd=0.5, delta_v=0.35, epochs=1000):
+    def __init__(self, n_neighbours=1, pgrd=0.5, delta_v=0.35, max_iter=1000):
 
         self.n_neighbours = n_neighbours
         self.pgrd = pgrd
         self.delta_v = delta_v
-        self.epochs = epochs
+        self.max_iter = max_iter
         self.accuracy_score = 0
 
     def predict(self, data, labels):
@@ -43,7 +43,7 @@ class ParticleCompetitionAndCooperation():
     
     def __labelPropagation(self, graph, storage, labels, c):
 
-        for it in range(0,self.epochs):
+        for it in range(0,self.max_iter):
 
             for p_i in range(0,len(storage['particles'])):
                 if(np.random.random() < self.pgrd):
