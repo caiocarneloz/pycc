@@ -23,10 +23,8 @@ class ParticleCompetitionAndCooperation():
         self.labels = []
         self.data = None
         
-    def predict(self, data, labels):
+    def fit(self, data, labels):
 
-        start = time.time()
-		
         self.data = data
         self.labels = labels
         self.c = len(np.unique(self.labels))
@@ -35,8 +33,12 @@ class ParticleCompetitionAndCooperation():
         self.storage['particles'] = self.__genParticles()
         self.storage['nodes'] = self.__genNodes()
         self.storage['dist_table'] = self.__genDistTable()
-
+        
         self.graph = self.__genGraph()
+        
+    def predict(self, data):
+        
+        start = time.time()
 
         self.__labelPropagation()
 
@@ -201,7 +203,7 @@ class ParticleCompetitionAndCooperation():
     
     def __genGraph(self):
     
-        values = self.data.values
+        values = self.data
         self.graph = {}
     
         dist = np.array([[float("inf")] * len(values) for i in range(len(values))])
@@ -222,4 +224,3 @@ class ParticleCompetitionAndCooperation():
             self.graph[i] = list(set(self.graph[i]))
     
         return self.graph
-    
