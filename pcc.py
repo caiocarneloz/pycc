@@ -1,12 +1,5 @@
 import time
-import random
 import numpy as np
-import pandas as pd
-from sklearn.metrics import roc_auc_score
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import f1_score
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import precision_score
 
 class ParticleCompetitionAndCooperation():
 
@@ -126,37 +119,6 @@ class ParticleCompetitionAndCooperation():
     def __randomWalk(self, neighbors):
 
         return neighbors[np.random.choice(len(neighbors))]
-    
-    def accuracyScore(self, masked_labels, true_labels, predicted_labels):
-    
-        df_x = pd.DataFrame()
-        df_x['labeled'] = masked_labels
-        df_x['true'] = true_labels
-        df_x['predicted'] = predicted_labels
-    
-        true = len(df_x[df_x['labeled'] == -1])
-        pred = len(df_x[(df_x['labeled'] == -1) & (df_x['true'] == df_x['predicted'])])
-    
-        return float(pred/true)
-    
-    def accuracyReport(self, predicted_labels, true_labels, labels):
-    
-        df_x = pd.DataFrame()
-        df_x['true'] = true_labels
-        df_x['predicted'] = predicted_labels
-        df_x['labeled'] = labels
-    
-        sum_true = 0
-        sum_pred = 0
-    
-        for l in np.unique(true_labels):
-            true = len(df_x[(df_x['labeled'] == -1) & (df_x['true'] == l)])
-            pred = len(df_x[(df_x['labeled'] == -1) & (df_x['true'] == l) & (df_x['true'] == df_x['predicted'])])
-            print('\n\n'+str(l)+': \n'+str(pred) + '/' +str(true) + ' - ' + "{0:.2f}".format(pred/true))
-            sum_true += true
-            sum_pred += pred
-    
-        print('\n\nAccuracy: \n'+str(sum_pred) + '/' +str(sum_true) + ' - ' + "{0:.2f}".format(sum_pred/sum_true))
     
     def __genClassMap(self):
     
