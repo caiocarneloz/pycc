@@ -63,7 +63,7 @@ Accuracy:
 As arguments, **pycc** receives the values explained below:
 
 ---
-- **n_neighbors:** value that represents the 1 policy number of neighbours.
+- **n_neighbors:** value that represents the number of neighbours in the graph build.
 - **pgrd:** value from 0 to 1 that defines the probability of particles to take the greedy movement.
 - **delta_v:** value from 0 to 1 to control changing rate of the domination levels.
 - **max_iter:** number of epochs until the label propagation stops.
