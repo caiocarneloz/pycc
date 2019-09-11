@@ -3,7 +3,7 @@ Python code for the semi-supervised learning method "particle competition and co
 
 ## Getting Started
 #### Dependencies
-You need Python 3.5 or later to use **pycc**. You can find it at [python.org](https://www.python.org/).
+You need Python 3.7 or later to use **pycc**. You can find it at [python.org](https://www.python.org/).
 
 You aso need pandas and numpy packages, which is available from [PyPI](https://pypi.org). If you have pip, just run:
 ```
@@ -31,7 +31,9 @@ sepal_l  sepal_w  petal_l  petal_w  label
 ```
 One way to execute the particle competition and cooperation algorithm is to run:
 ```
-python pcc.py "/home/datasets/iris.csv" "," "label" 1 2 32 0.6 0.35 0.1 100
+model = ParticleCompetitionAndCooperation(n_neighbors=32, pgrd=0.6, delta_v=0.35, max_iter=100)
+model.fit(data, labels)
+pred = model.predict(data)
 ```
 
 #### Output
@@ -54,21 +56,13 @@ Accuracy:
 ```
 
 #### Parameters
-As arguments, **pycc** receives a list of values which are explained below:
+As arguments, **pycc** receives the values explained below:
 
 ---
-- **file_path:** absolute or relative path where your dataset is located.
-- **separator:** character which separates the values from your dataset, commonly comma.
-- **target:** name of the column where your target (or label) values are located.
-- **policy:** relationship policy that specifies if a pair of nodes will have a connection.
-
-   0 to consider a distance threshold and 1 to link each node to it's k-nearest neighbours.
-- **sigma:** value that represents the 0 policy threshold.
-- **k:** value that represents the 1 policy number of neighbours.
+- **n_neighbors:** value that represents the 1 policy number of neighbours.
 - **pgrd:** value from 0 to 1 that defines the probability of particles to take the greedy movement.
 - **delta_v:** value from 0 to 1 to control changing rate of the domination levels.
-- **l_data:** value from 0 to 1 representing the percentage of data that will be left labeled.
-- **iterations:** number of epochs until the label propagation stops.
+- **max_iter:** number of epochs until the label propagation stops.
 ---
 
 ## Citation
