@@ -5,9 +5,8 @@ Python code for the semi-supervised learning method "particle competition and co
 #### Dependencies
 You need Python 3.7 or later to use **pycc**. You can find it at [python.org](https://www.python.org/).
 
-You aso need pandas and numpy packages, which is available from [PyPI](https://pypi.org). If you have pip, just run:
+You aso need the numpy package, which is available from [PyPI](https://pypi.org). If you have pip, just run:
 ```
-pip install pandas
 pip install numpy
 ```
 #### Installation
@@ -32,6 +31,10 @@ sepal_l  sepal_w  petal_l  petal_w  label
 ```
 One way to execute the particle competition and cooperation algorithm is to run:
 ```
+df = pd.read_csv('/home/datasets/iris.csv')
+data = df.loc[:,df.columns != 'label']
+labels = df.loc[:,'label']
+
 model = ParticleCompetitionAndCooperation(n_neighbors=32, pgrd=0.6, delta_v=0.35, max_iter=100)
 model.fit(data, labels)
 pred = model.predict(data)
