@@ -1,4 +1,4 @@
-﻿# Particle Competition and Cooperation
+# Particle Competition and Cooperation
 Python code for the semi-supervised learning method "particle competition and cooperation".
 
 ## Getting Started
@@ -17,6 +17,7 @@ git clone https://github.com/caiocarneloz/pycc.git
 ```
 
 ## Usage
+The usage of this class is pretty similar to [semi-supervised algorithms at scikit-learn](https://scikit-learn.org/stable/modules/label_propagation.html).
 
 #### Execution
 Considering the following [**iris.csv**](https://archive.ics.uci.edu/ml/datasets/iris) file located on **/home/datasets**:
