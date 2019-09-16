@@ -3,6 +3,8 @@ import numpy as np
 
 class ParticleCompetitionAndCooperation():
 
+
+
     def __init__(self, n_neighbors=1, pgrd=0.5, delta_v=0.35, max_iter=1000, kernel='knn'):
 
         self.n_neighbors = n_neighbors
@@ -15,7 +17,8 @@ class ParticleCompetitionAndCooperation():
         self.c = 0
         self.labels = []
         self.data = None
-        
+
+
     def fit(self, data, labels):
 
         self.data = data
@@ -26,11 +29,12 @@ class ParticleCompetitionAndCooperation():
         self.storage['particles'] = self.__genParticles()
         self.storage['nodes'] = self.__genNodes()
         self.storage['dist_table'] = self.__genDistTable()
-        
+
         self.graph = self.__genGraph()
-        
+
+
     def predict(self, data):
-        
+
         start = time.time()
 
         self.__labelPropagation()
@@ -40,7 +44,8 @@ class ParticleCompetitionAndCooperation():
         print('finished with time: '+"{0:.0f}".format(end-start)+'s')
 
         return list(self.storage['nodes'][:,0])
-    
+
+
     def __labelPropagation(self):
 
         for it in range(0,self.max_iter):
@@ -58,7 +63,8 @@ class ParticleCompetitionAndCooperation():
         for n_i in range(0,len(self.storage['nodes'])):
             if(self.storage['nodes'][n_i,0] == -1):
                 self.storage['nodes'][n_i,0] = label_list[np.argmax(self.storage['nodes'][n_i,1:])]
-    
+
+
     def __update(self, n_i, p_i):
 
         current_domain = []
@@ -91,6 +97,7 @@ class ParticleCompetitionAndCooperation():
         if(self.storage['nodes'][n_i,self.storage['class_map'][self.storage['particles'][p_i,3]]] > max(new_domain)):#NEW OR CURRENT?
             self.storage['particles'][p_i,0] = n_i
 
+
     def __greedyWalk(self, p_i, neighbors):
 
         prob_sum = 0
@@ -114,75 +121,80 @@ class ParticleCompetitionAndCooperation():
                 break
 
         return neighbors[choice]
-    
-    
+
+
     def __randomWalk(self, neighbors):
 
         return neighbors[np.random.choice(len(neighbors))]
-    
+
+
     def __genClassMap(self):
-    
+
         i = 1
         class_map = {}
         for c in np.unique(self.labels):
             if(c != -1):
                 class_map[c] = i
                 i+=1
-    
+
         return class_map
-    
+
     def __genParticles(self):
-    
-        particles = []
-    
-        for i in range(0,len(self.labels)):
-            if(self.labels[i] != -1):
-                particles.append([int(i),int(i),1,self.labels[i]])
-    
-        return np.array(particles, dtype='object')
-    
+
+        labeled = self.labels[self.labels!=-1]
+        indexes = np.where(self.labels!=-1)[0]
+
+        particles = np.ones(shape=(len(labeled),4), dtype=int)
+
+        particles[:,0] = particles[:,1] = indexes
+        particles[:,3] = labeled
+
+        return particles
+
+
     def __genNodes(self):
-    
-        nodes = np.array([[0] * len(np.unique(self.labels)) for i in range(len(self.data))], dtype='object')
+
+        nodes = np.full(shape=(len(self.data),len(np.unique(self.labels))), fill_value=float(self.c))
         nodes[:,0] = self.labels
-    
-        for l in np.unique(self.labels):
-            if(l != -1):
-                nodes[nodes[:,0] == str(l), self.storage['class_map'][l]] = 1
-    
-        nodes[nodes[:,0] == -1,1:] = 1/self.c
-    
+
+        nodes[nodes[:,0] != -1,1:] = 0
+
+        for l in np.unique(self.labels[self.labels!=-1]):
+            nodes[nodes[:,0] == l,l+1] = 1
+
         return nodes
-    
+
+
     def __genDistTable(self):
-    
-        dist_table = np.array([[len(self.data)-1] * len(self.storage['particles']) for i in range(len(self.data))])
-    
-        for i in range(0,len(self.storage['particles'])):
-            dist_table[self.storage['particles'][i,1],i] = 0
-    
+
+        dist_table = np.full(shape=(len(self.data),len(self.storage['particles'])), fill_value=len(self.data)-1,dtype=int)
+
+        for h,i in zip(self.storage['particles'][:,1],range(len(self.storage['particles']))):
+            dist_table[h,i] = 0
+
         return dist_table
-    
+
+
     def __genGraph(self):
-    
+
         values = self.data
         self.graph = {}
-    
+
         dist = np.array([[float("inf")] * len(values) for i in range(len(values))])
-    
+
         for i in range(0,len(values)):
-    
+
             actual = values[i]
-    
+
             for j in range(i+1,len(values)):
                     dist[j,i] = dist[i,j] = np.linalg.norm(actual-values[j])
-    
+
         for i in range(0,len(values)):
             sorted_dist = np.argsort(dist[i])
             self.graph[i] = list(sorted_dist[0:self.n_neighbors])
-    
+
         for i in range(0,len(self.data)):
             self.graph[i] += ([k for k,v in self.graph.items() if i in v])
             self.graph[i] = list(set(self.graph[i]))
-    
+
         return self.graph
