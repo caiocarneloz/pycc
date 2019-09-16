@@ -3,8 +3,6 @@ import numpy as np
 
 class ParticleCompetitionAndCooperation():
 
-
-
     def __init__(self, n_neighbors=1, pgrd=0.5, delta_v=0.35, max_iter=1000, kernel='knn'):
 
         self.n_neighbors = n_neighbors
@@ -17,20 +15,30 @@ class ParticleCompetitionAndCooperation():
         self.c = 0
         self.labels = []
         self.data = None
+        self.unique_labels = []
+        self.spent = 0
 
 
     def fit(self, data, labels):
 
+        start = time.time()
+
         self.data = data
         self.labels = labels
-        self.c = len(np.unique(self.labels))
+        self.unique_labels = np.unique(self.labels)
+        self.unique_labels = self.unique_labels[self.unique_labels != -1]
+        self.c = len(self.unique_labels)
 
-        self.storage['class_map'] = self.__genClassMap()
-        self.storage['particles'] = self.__genParticles()
-        self.storage['nodes'] = self.__genNodes()
-        self.storage['dist_table'] = self.__genDistTable()
+        self.class_map = self.__genClassMap()
+        self.particles = self.__genParticles()
+        self.nodes = self.__genNodes()
+        self.dist_table = self.__genDistTable()
 
         self.graph = self.__genGraph()
+
+        end = time.time()
+
+        print('finished with time: '+"{0:.5f}".format(end-start)+'s')
 
 
     def predict(self, data):
@@ -41,28 +49,29 @@ class ParticleCompetitionAndCooperation():
 
         end = time.time()
 
-        print('finished with time: '+"{0:.0f}".format(end-start)+'s')
+        print('finished with time: '+"{0:.5f}".format(self.spent)+'s')
 
-        return list(self.storage['nodes'][:,0])
+        print('finished with time: '+"{0:.5f}".format(end-start)+'s')
+
+        return list(self.nodes[:,0])
 
 
     def __labelPropagation(self):
 
         for it in range(0,self.max_iter):
 
-            for p_i in range(0,len(self.storage['particles'])):
+            for p_i in range(0,len(self.particles)):
+
                 if(np.random.random() < self.pgrd):
-                    next_node = self.__greedyWalk(p_i, self.graph[self.storage['particles'][p_i,0]])
+                    next_node = self.__greedyWalk(p_i, self.graph[self.particles[p_i,0]])
                 else:
-                    next_node = self.__randomWalk(self.graph[self.storage['particles'][p_i,0]])
+                    next_node = self.__randomWalk(self.graph[self.particles[p_i,0]])
 
                 self.__update(next_node, p_i)
 
-        label_list = np.unique(self.labels[self.labels != -1])
-
-        for n_i in range(0,len(self.storage['nodes'])):
-            if(self.storage['nodes'][n_i,0] == -1):
-                self.storage['nodes'][n_i,0] = label_list[np.argmax(self.storage['nodes'][n_i,1:])]
+        for n_i in range(0,len(self.nodes)):
+            if(self.nodes[n_i,0] == -1):
+                self.nodes[n_i,0] = self.unique_labels[np.argmax(self.nodes[n_i,1:])]
 
 
     def __update(self, n_i, p_i):
@@ -71,44 +80,45 @@ class ParticleCompetitionAndCooperation():
         new_domain = []
 
         if(self.labels[n_i] == -1):
-            sub = (self.delta_v*self.storage['particles'][p_i,2])/(len(self.labels)-1)
+            sub = (self.delta_v*self.particles[p_i,2])/(len(self.labels)-1)
 
-            for l in np.unique(self.labels):
-                if(self.storage['particles'][p_i,3] != l and l != -1):
-                    current_domain.append(self.storage['nodes'][n_i,self.storage['class_map'][l]])
-                    self.storage['nodes'][n_i,self.storage['class_map'][l]] = max([0,self.storage['nodes'][n_i,self.storage['class_map'][l]]-sub])
-                    new_domain.append(self.storage['nodes'][n_i,self.storage['class_map'][l]])
+            for l in self.unique_labels:
+                if(self.particles[p_i,3] != l):
+                    current_domain.append(self.nodes[n_i,self.class_map[l]])
+                    self.nodes[n_i,self.class_map[l]] = max([0,self.nodes[n_i,self.class_map[l]]-sub])
+                    new_domain.append(self.nodes[n_i,self.class_map[l]])
 
 
             difference = []
             for i in range(0,len(current_domain)):
                 difference.append(current_domain[i]-new_domain[i])
 
-            self.storage['nodes'][n_i,self.storage['class_map'][self.storage['particles'][p_i,3]]] += sum(difference)
+            self.nodes[n_i,self.class_map[self.particles[p_i,3]]] += sum(difference)
         else:
             new_domain.append(0)
 
-        self.storage['particles'][p_i,2] = self.storage['nodes'][n_i,self.storage['class_map'][self.storage['particles'][p_i,3]]]
+        self.particles[p_i,2] = self.nodes[n_i,self.class_map[self.particles[p_i,3]]]
 
-        current_node = self.storage['particles'][p_i,0]
-        if(self.storage['dist_table'][n_i,p_i] > (self.storage['dist_table'][current_node,p_i]+1)):
-            self.storage['dist_table'][n_i,p_i] = self.storage['dist_table'][current_node,p_i]+1
+        current_node = self.particles[p_i,0]
+        if(self.dist_table[n_i,p_i] > (self.dist_table[current_node,p_i]+1)):
+            self.dist_table[n_i,p_i] = self.dist_table[current_node,p_i]+1
 
-        if(self.storage['nodes'][n_i,self.storage['class_map'][self.storage['particles'][p_i,3]]] > max(new_domain)):#NEW OR CURRENT?
-            self.storage['particles'][p_i,0] = n_i
+        if(self.nodes[n_i,self.class_map[self.particles[p_i,3]]] > max(new_domain)):#NEW OR CURRENT?
+            self.particles[p_i,0] = n_i
 
 
     def __greedyWalk(self, p_i, neighbors):
-
+    
+        start = time.time()
+        
         prob_sum = 0
         slices = []
-        label = self.storage['particles'][p_i,3]
+        label = self.particles[p_i,3]
 
         for n in neighbors:
-            prob_sum += self.storage['nodes'][n,self.storage['class_map'][label]]*(1/pow(1+self.storage['dist_table'][n,p_i],2))
-
-        for n in neighbors:
-            slices.append((self.storage['nodes'][n,self.storage['class_map'][label]]*(1/pow(1+self.storage['dist_table'][n,p_i],2)))/prob_sum)
+            slices.append(self.nodes[n,self.class_map[label]]*(1/pow(1+self.dist_table[n,p_i],2)))
+            
+        slices = slices/sum(slices)
 
         choice = 0
         roullete_sum = 0
@@ -119,7 +129,11 @@ class ParticleCompetitionAndCooperation():
             if(roullete_sum > rand):
                 choice = i
                 break
+            
+        end = time.time()
 
+        self.spent += end - start
+            
         return neighbors[choice]
 
 
@@ -132,10 +146,9 @@ class ParticleCompetitionAndCooperation():
 
         i = 1
         class_map = {}
-        for c in np.unique(self.labels):
-            if(c != -1):
-                class_map[c] = i
-                i+=1
+        for c in self.unique_labels:
+            class_map[c] = i
+            i+=1
 
         return class_map
 
@@ -154,7 +167,7 @@ class ParticleCompetitionAndCooperation():
 
     def __genNodes(self):
 
-        nodes = np.full(shape=(len(self.data),len(np.unique(self.labels))), fill_value=float(self.c))
+        nodes = np.full(shape=(len(self.data),len(self.unique_labels)+1), fill_value=float(self.c))
         nodes[:,0] = self.labels
 
         nodes[nodes[:,0] != -1,1:] = 0
@@ -167,9 +180,9 @@ class ParticleCompetitionAndCooperation():
 
     def __genDistTable(self):
 
-        dist_table = np.full(shape=(len(self.data),len(self.storage['particles'])), fill_value=len(self.data)-1,dtype=int)
+        dist_table = np.full(shape=(len(self.data),len(self.particles)), fill_value=len(self.data)-1,dtype=int)
 
-        for h,i in zip(self.storage['particles'][:,1],range(len(self.storage['particles']))):
+        for h,i in zip(self.particles[:,1],range(len(self.particles))):
             dist_table[h,i] = 0
 
         return dist_table
