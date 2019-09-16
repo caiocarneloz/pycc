@@ -17,7 +17,9 @@ class ParticleCompetitionAndCooperation():
         self.data = None
         
     def fit(self, data, labels):
-
+        
+        start = time.time()
+        
         self.data = data
         self.labels = labels
         self.c = len(np.unique(self.labels))
@@ -29,6 +31,12 @@ class ParticleCompetitionAndCooperation():
         
         self.graph = self.__genGraph()
         
+        end = time.time()
+        
+        print('finished with time: '+"{0:.5f}".format(end-start)+'s')
+        
+        return self.storage
+        
     def predict(self, data):
         
         start = time.time()
@@ -37,7 +45,7 @@ class ParticleCompetitionAndCooperation():
 
         end = time.time()
 
-        print('finished with time: '+"{0:.0f}".format(end-start)+'s')
+        print('finished with time: '+"{0:.5f}".format(end-start)+'s')
 
         return list(self.storage['nodes'][:,0])
     
@@ -132,36 +140,39 @@ class ParticleCompetitionAndCooperation():
         return class_map
     
     def __genParticles(self):
+        
+        labeled = self.labels[self.labels!=-1]
+        indexes = np.where(self.labels!=-1)[0]
+        
+        particles = np.ones(shape=(len(labeled),4), dtype=int)
     
-        particles = []
+        particles[:,0] = particles[:,1] = indexes
+        particles[:,3] = labeled
+        
+        return particles
     
-        for i in range(0,len(self.labels)):
-            if(self.labels[i] != -1):
-                particles.append([int(i),int(i),1,self.labels[i]])
-    
-        return np.array(particles, dtype='object')
     
     def __genNodes(self):
     
-        nodes = np.array([[0] * len(np.unique(self.labels)) for i in range(len(self.data))], dtype='object')
+        nodes = np.full(shape=(len(self.data),len(np.unique(self.labels))), fill_value=float(self.c))
         nodes[:,0] = self.labels
-    
-        for l in np.unique(self.labels):
-            if(l != -1):
-                nodes[nodes[:,0] == str(l), self.storage['class_map'][l]] = 1
-    
-        nodes[nodes[:,0] == -1,1:] = 1/self.c
+        
+        nodes[nodes[:,0] != -1,1:] = 0
+        
+        for l in np.unique(self.labels[self.labels!=-1]):
+            nodes[nodes[:,0] == l,l+1] = 1
     
         return nodes
     
     def __genDistTable(self):
-    
-        dist_table = np.array([[len(self.data)-1] * len(self.storage['particles']) for i in range(len(self.data))])
-    
-        for i in range(0,len(self.storage['particles'])):
-            dist_table[self.storage['particles'][i,1],i] = 0
-    
+
+        dist_table = np.full(shape=(len(self.data),len(self.storage['particles'])), fill_value=len(self.data)-1,dtype=int)
+
+        for h,i in zip(self.storage['particles'][:,1],range(len(self.storage['particles']))):
+            dist_table[h,i] = 0
+
         return dist_table
+
     
     def __genGraph(self):
     
