@@ -16,50 +16,7 @@ git clone https://github.com/caiocarneloz/pycc.git
 ```
 
 ## Usage
-The usage of this class is pretty similar to [semi-supervised algorithms at scikit-learn](https://scikit-learn.org/stable/modules/label_propagation.html).
-
-#### Execution
-Considering the following [**iris.csv**](https://archive.ics.uci.edu/ml/datasets/iris) file located on **/home/datasets**:
-```
-sepal_l  sepal_w  petal_l  petal_w  label
-5.1      3.5      1.4      0.2      Iris-setosa
-4.9      3.0      1.4      0.2      Iris-setosa
-7.0      3.2      4.7      1.4      Iris-versicolor
-6.4      3.2      4.5      1.5      Iris-versicolor
-6.3      3.3      6.0      2.5      Iris-virginica
-5.8      2.7      5.1      1.9      Iris-virginica
-```
-One way to execute the particle competition and cooperation algorithm is to run:
-```
-from pypcc.model import ParticleCompetitionCooperation
-
-df = pd.read_csv('/home/datasets/iris.csv')
-data = df.loc[:,df.columns != 'label'].values
-labels = df.loc[:,'label'].values
-
-model = ParticleCompetitionAndCooperation(n_neighbors=32, pgrd=0.6, delta_v=0.35, max_iter=100)
-model.fit(data, labels)
-pred = model.predict(data)
-```
-
-#### Output
-As output, a report containing the accuracy for all present classes is shown:
-```
-Iris-setosa: 
-45/45 - 1.00
-
-
-Iris-versicolor: 
-41/45 - 0.91
-
-
-Iris-virginica: 
-39/45 - 0.87
-
-
-Accuracy: 
-125/135 - 0.93
-```
+The usage of this class is pretty similar to [semi-supervised algorithms at scikit-learn](https://scikit-learn.org/stable/modules/label_propagation.html). A "demo" code was added to this repository.
 
 #### Parameters
 As arguments, **pycc** receives the values explained below:
