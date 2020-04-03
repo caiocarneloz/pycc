@@ -116,6 +116,7 @@ class ParticleCompetitionAndCooperation():
         label = self.particles[p_i,3]
 
         for n in neighbors:
+            prob_sum += self.nodes[n,self.class_map[label]]*(1/pow(1+self.dist_table[n,p_i],2))
             slices.append(self.nodes[n,self.class_map[label]]*(1/pow(1+self.dist_table[n,p_i],2)))
             
         slices = slices/sum(slices)
@@ -167,7 +168,7 @@ class ParticleCompetitionAndCooperation():
 
     def __genNodes(self):
 
-        nodes = np.full(shape=(len(self.data),len(self.unique_labels)+1), fill_value=float(self.c))
+        nodes = np.full(shape=(len(self.data),len(self.unique_labels)+1), fill_value=float(1/self.c))
         nodes[:,0] = self.labels
 
         nodes[nodes[:,0] != -1,1:] = 0
