@@ -1,5 +1,5 @@
 # Particle Competition and Cooperation
-Python code for the semi-supervised learning method "particle competition and cooperation". This particular code was used in my master's thesis, available at [UNESP Institutional Repository](https://repositorio.unesp.br/handle/11449/191774).
+Python code for the semi-supervised learning method "particle competition and cooperation". This particular code was used in my master's thesis "[Aid in Alzheimer's disease diagnosis from magnetic resonance imaging using particle competition and cooperation](https://repositorio.unesp.br/handle/11449/191774)".
 
 ## Getting Started
 #### Installation
