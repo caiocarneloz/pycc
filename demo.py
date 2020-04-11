@@ -5,7 +5,7 @@ from sklearn.metrics import confusion_matrix
 from pycc import ParticleCompetitionAndCooperation
 
 #If you have installed the pypcc package, you can import the algorithm by typing:
-#from pypcc.model import ParticleCompetitionAndCooperation
+#from pypcc import ParticleCompetitionAndCooperation
 
 #FUNCTION FOR ENCODING STRING LABELS AND GENERATING "UNLABELED DATA"
 def maskData(true_labels, percentage):
